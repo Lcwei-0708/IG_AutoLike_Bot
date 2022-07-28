@@ -1,4 +1,4 @@
 # AutoLike
 IG貼文自動按讚機器人
 
-需要先安裝Webdriver
+需先下載對應瀏覽器版本的Webdriver
