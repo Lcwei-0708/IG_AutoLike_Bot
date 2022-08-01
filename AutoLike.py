@@ -1,99 +1,122 @@
-import sys
 import time
-import json
-import pandas
 import random
-import requests
+import maskpass
+import warnings
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys as Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.microsoft import EdgeChromiumDriverManager
+
+# 讓棄用警告不顯示
+warnings.filterwarnings('ignore',category = DeprecationWarning)
 
 # 設定使用者資料
 headers = {"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.134 Safari/537.36 Edg/103.0.1264.71"}
 
-# 保持視窗打開
 option = webdriver.EdgeOptions()
-option.add_experimental_option('detach', True)
+option.add_experimental_option('excludeSwitches', ['enable-logging'])
+option.use_chromium = True
+
+# 讓瀏覽器在背景執行
+#option.add_argument('--headless')
 
 # 設定瀏覽器
-driver = webdriver.Edge('D:/Webdriver/msedgedriver.exe',options = option)   
+driver = webdriver.Edge(EdgeChromiumDriverManager().install(),options = option)
 
-# 視窗最大化
-driver.maximize_window()
+# 讀取IG網頁
+driver.get('https://www.instagram.com/')
 
-# 帳號清單
-email_list = ['TanjiroMizu01@gmail.com',
-              'TanjiroMizu02@gmail.com',
-              'TanjiroMizu03@gmail.com',
-              'TanjiroMizu04@gmail.com',
-              'TanjiroMizu05@gmail.com',
-              'TanjiroMizu06@gmail.com',
-              'TanjiroMizu07@gmail.com',
-              'TanjiroMizu08@gmail.com',
-              'TanjiroMizu09@gmail.com',
-              'TanjiroMizu10@gmail.com']
-
-# 密碼清單
-password_list = ['Mizu01_Tanjiro',
-                 'Mizu02_Tanjiro',
-                 'Mizu03_Tanjiro',
-                 'Mizu04_Tanjiro',
-                 'Mizu05_Tanjiro',
-                 'Mizu06_Tanjiro',
-                 'Mizu07_Tanjiro',
-                 'Mizu08_Tanjiro',
-                 'Mizu09_Tanjiro',
-                 'Mizu10_Tanjiro']
-
-# 貼文網址清單
-posts_list = ['https://www.instagram.com/p/CgghuRgpH-j/',
-              'https://www.instagram.com/p/Cgd8674DDXY/',
-              'https://www.instagram.com/p/CgbYJxJg36L/',
-              'https://www.instagram.com/p/CgYzT2JMNfZ/',
-              'https://www.instagram.com/p/CgVJ7FqPM-A/',
-              'https://www.instagram.com/p/CgTpvrPM2hN/']
-
-# 隨機選擇一組帳號
-user_number = random.randint(0,len(email_list)-1)
-
-#貼文網址
+# 貼文網址
 post_url = ''
 
+# IG帳號
+input_email = ''
+
+# IG密碼
+input_password = ''
+
 # 登入IG帳號
-def Login_IG():    
+def Login_IG():   
     
-    # 讀取IG網頁
-    driver.get('https://www.instagram.com/')
+    while True:
+        print('請輸入要登入的IG帳號')
+        
+        # 等待輸入帳號欄位出現並且抓取XPath
+        email = WebDriverWait(driver,10).until(
+                EC.presence_of_all_elements_located(((By.CSS_SELECTOR,'input[class ="_2hvTZ pexuQ zyHYP"]')))
+            )[0]
+        
+        # 等待輸入密碼欄位出現並且抓取XPath
+        password = WebDriverWait(driver,10).until(
+                EC.presence_of_all_elements_located(((By.CSS_SELECTOR,'input[class ="_2hvTZ pexuQ zyHYP"]')))
+            )[1]
+        
+        input_email = input('帳號：')
+        input_password = maskpass.askpass(prompt="密碼：", mask="*")
+ 
+        # 輸入帳號
+        email.send_keys(input_email)
+        
+        # 等待1~3秒
+        time.sleep(random.randint(1,3))
+        
+        # 輸入密碼
+        password.send_keys(input_password)
+        
+        # 等待1~3秒
+        time.sleep(random.randint(1,3))
+        
+        # 送出
+        password.submit()
+        
+        try :
+            
+            # 讀取登入錯誤訊息欄位
+            login_mistake = WebDriverWait(driver,10).until(
+                    EC.presence_of_element_located((By.XPATH,'/html/body/div[1]/section/main/article/div[2]/div[1]/div[2]/form/div[2]/p'))
+                )            
+            print(login_mistake.text,'\n')   
+            driver.refresh()            
+        
+        except Exception as e:
+            print('登入成功')
+            
+            # 等待3~5秒
+            time.sleep(random.randint(3,5))
+            break
+        
+#登出IG帳號
+def Logout_IG():
     
-    # 等待輸入帳號欄位出現並且抓取XPath
-    email = WebDriverWait(driver,10).until(
-            EC.presence_of_element_located((By.XPATH,'//*[@id="loginForm"]/div/div[1]/div/label/input'))
-        )
-    
-    # 輸入帳號
-    email.send_keys(email_list[user_number])
+    # 讀取用戶頭像按鈕並點擊
+    user = WebDriverWait(driver,10).until(
+            EC.presence_of_all_elements_located(((By.CSS_SELECTOR,'span[class ="_aa8h _aa8i"]')))
+        )[0].click()
     
     # 等待1~3秒
     time.sleep(random.randint(1,3))
     
-    # 等待輸入密碼欄位出現並且抓取XPath
-    password = WebDriverWait(driver,10).until(
-            EC.presence_of_element_located((By.XPATH,'//*[@id="loginForm"]/div/div[2]/div/label/input'))
-        )
+    # 讀取登出按鈕並點擊
+    logout = WebDriverWait(driver,10).until(
+            EC.presence_of_all_elements_located(((By.XPATH,'/html/body/div[1]/div/div/div/div[1]/div/div/div/div[1]/div[1]/section/nav/div[2]/div/div/div[3]/div/div[6]/div[2]/div[2]/div[2]/div[2]/div/div/div/div/div/div')))
+        )[0].click()
     
-    # 輸入密碼
-    password.send_keys(password_list[user_number])
+    try :
+        
+        # 等待輸入帳號欄位出現並且抓取XPath
+        email = WebDriverWait(driver,10).until(
+                EC.presence_of_all_elements_located(((By.CSS_SELECTOR,'input[class ="_2hvTZ pexuQ zyHYP"]')))
+            )
+                        
+        print('登出成功')
     
-    # 等待1~3秒
-    time.sleep(random.randint(1,3))
+    except Exception as e:
+        print('登出失敗')
     
-    # 送出
-    password.submit()
-    
-    # 等待5~10秒
-    time.sleep(random.randrange(5,10))
+    # 等待3秒  
+    time.sleep(3)
     
 # 貼文按讚    
 def Search_Posts():
@@ -194,8 +217,8 @@ try:
 
 # 最後必定執行
 finally:
+    Logout_IG()
     
     # 關閉瀏覽器
     driver.quit()
     print('已關閉瀏覽器')
-    
